@@ -48,6 +48,7 @@ void DrawTMX(tmx_map *map, int posX, int posY, Color tint);         // Render th
 void DrawTMXLayers(tmx_map *map, tmx_layer *layers, int posX, int posY, Color tint); // Render all the given map layers to the screen
 void DrawTMXLayer(tmx_map *map, tmx_layer *layer, int posX, int posY, Color tint); // Render a single map layer on the screen
 void DrawTMXTile(tmx_tile* tile, int posX, int posY, Color tint);   // Render the given tile to the screen
+void DrawTMXTilePro(tmx_tile *tile, Rectangle dstRect, float rotation, Color tint); // Render the given tile with rotation and scaling
 
 #ifdef __cplusplus
 }
@@ -254,7 +255,7 @@ void DrawTMXLayerObjects(tmx_map *map, tmx_object_group *objgr, int posX, int po
                 case OT_TILE: {
                     int gid = head->content.gid;
                     if (map->tiles[gid] != NULL) {
-                        DrawTMXTile(map->tiles[gid], dest.x, dest.y - dest.height, tint);
+                        DrawTMXTilePro(map->tiles[gid], dest, head->rotation, tint);
                     }
                 } break;
                 case OT_TEXT: {
@@ -324,6 +325,49 @@ void DrawTMXTile(tmx_tile* tile, int posX, int posY, Color tint) {
     if (image) {
         DrawTextureRec(*image, srcRect, position, tint);
     }
+}
+
+/**
+ * Render a single TMX tile on the screen with scaling and rotation.
+ *
+ * @param tile Which tile to render on the screen.
+ * @param dstRect The position and size of the tile.
+ * @param rotation The rotation of the tile in degrees.
+ * @param tint How to tint the tile when rendering.
+ */
+void DrawTMXTilePro(tmx_tile *tile, Rectangle dstRect, float rotation, Color tint) {
+    Texture* image = NULL;
+    tmx_tileset *tileset = tile->tileset;
+
+    tmx_image *im = tile->image;
+    if (im && im->resource_image) {
+        image = (Texture*)im->resource_image;
+    }
+    else if (tile->tileset->image->resource_image) {
+        image = (Texture*)tileset->image->resource_image;
+    }
+
+    if (image == NULL)
+        return;
+
+    Rectangle srcRect = {
+        .x  = tile->ul_x,
+        .y  = tile->ul_y,
+        .width  = tileset->tile_width,
+        .height = tileset->tile_height
+    };
+    
+    if (dstRect.width == 0.0f)
+        dstRect.width = srcRect.width;
+    if (dstRect.height == 0.0f)
+        dstRect.height = srcRect.height;
+
+    Vector2 origin = {
+        .x = -(float)tileset->x_offset * dstRect.width / srcRect.width,
+        .y = (srcRect.height - tileset->y_offset) * dstRect.height / srcRect.height
+    };
+
+    DrawTexturePro(*image, srcRect, dstRect, origin, rotation, tint);
 }
 
 /**
